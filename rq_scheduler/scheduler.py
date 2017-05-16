@@ -112,6 +112,14 @@ class Scheduler(object):
             job.save()
         return job
 
+    def enqueue_job_at(self, scheduled_time, job):
+        self.connection._zadd(self.scheduled_jobs_key,
+                              to_unix(scheduled_time),
+                              job.id)
+
+    def enqueue_job_in(self, time_delta, job):
+        self.enqueue_job_at(datetime.utcnow() + time_delta, job)
+
     def enqueue_at(self, scheduled_time, func, *args, **kwargs):
         """
         Pushes a job to the scheduler queue. The scheduled queue is a Redis sorted
@@ -137,9 +145,7 @@ class Scheduler(object):
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id,
                                result_ttl=result_ttl, ttl=ttl, meta=meta)
-        self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(scheduled_time),
-                              job.id)
+        self.enqueue_job_at(scheduled_time, job)
         return job
 
     def enqueue_in(self, time_delta, func, *args, **kwargs):
@@ -156,9 +162,7 @@ class Scheduler(object):
 
         job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id,
                                result_ttl=result_ttl, ttl=ttl, meta=meta)
-        self.connection._zadd(self.scheduled_jobs_key,
-                              to_unix(datetime.utcnow() + time_delta),
-                              job.id)
+        self.enqueue_job_in(time_delta, job)
         return job
 
     def schedule(self, scheduled_time, func, args=None, kwargs=None,
