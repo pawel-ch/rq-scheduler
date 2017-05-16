@@ -96,7 +96,7 @@ class Scheduler(object):
 
     def _create_job(self, func, args=None, kwargs=None, commit=True,
                     result_ttl=None, ttl=None, id=None, description=None,
-                    queue_name=None, timeout=None):
+                    queue_name=None, timeout=None, meta=None):
         """
         Creates an RQ job and saves it to Redis.
         """
@@ -106,7 +106,7 @@ class Scheduler(object):
             kwargs = {}
         job = Job.create(func, args=args, connection=self.connection,
                          kwargs=kwargs, result_ttl=result_ttl, ttl=ttl, id=id,
-                         description=description, timeout=timeout)
+                         description=description, timeout=timeout, meta=meta)
         job.origin = queue_name or self.queue_name
         if commit:
             job.save()
@@ -131,8 +131,12 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        result_ttl = kwargs.pop('result_ttl', None)
+        ttl = kwargs.pop('ttl', None)
+        meta = kwargs.pop('meta', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id,
+                               result_ttl=result_ttl, ttl=ttl, meta=meta)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(scheduled_time),
                               job.id)
@@ -146,8 +150,12 @@ class Scheduler(object):
         """
         timeout = kwargs.pop('timeout', None)
         job_id = kwargs.pop('job_id', None)
+        result_ttl = kwargs.pop('result_ttl', None)
+        ttl = kwargs.pop('ttl', None)
+        meta = kwargs.pop('meta', None)
 
-        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id)
+        job = self._create_job(func, args=args, kwargs=kwargs, timeout=timeout, id=job_id,
+                               result_ttl=result_ttl, ttl=ttl, meta=meta)
         self.connection._zadd(self.scheduled_jobs_key,
                               to_unix(datetime.utcnow() + time_delta),
                               job.id)
